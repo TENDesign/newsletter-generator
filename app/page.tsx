@@ -21,6 +21,15 @@ type Newsletter = {
 };
 
 const uid = () => Math.random().toString(36).slice(2, 10);
+const formatAgendaDate = (value: string) => {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return value;
+  return new Date(`${value}T12:00:00`).toLocaleDateString(undefined, { month: "short", day: "numeric" });
+};
+const formatAgendaTime = (value: string) => {
+  if (!/^\d{2}:\d{2}$/.test(value)) return value;
+  const [hour, minute] = value.split(":").map(Number);
+  return new Date(2000, 0, 1, hour, minute).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+};
 const FONT_OPTIONS = [
   { name: "Lora", stack: "'Lora', Georgia, serif" },
   { name: "Merriweather", stack: "'Merriweather', Georgia, serif" },
@@ -37,9 +46,9 @@ const freshIssue = (): Newsletter => ({
   fontFamily: FONT_OPTIONS[0].stack,
   published: false,
   agenda: [
-    { id: uid(), date: "Jul 1", time: "6:00 PM", title: "Wednesday Night Racing" },
-    { id: uid(), date: "Jul 3", time: "6:30 PM", title: "Spring / Summer Series" },
-    { id: uid(), date: "Jul 5", time: "8:00 AM", title: "Sunday Centerboard Series" },
+    { id: uid(), date: "2026-07-24", time: "18:00", title: "Wednesday Night Racing" },
+    { id: uid(), date: "2026-07-25", time: "18:30", title: "Spring / Summer Series" },
+    { id: uid(), date: "2026-07-26", time: "08:00", title: "Sunday Centerboard Series" },
   ],
   articles: [
     {
@@ -217,7 +226,7 @@ export default function Home() {
               </div>}
               {tab === "agenda" && <div className="form-section"><h2>Agenda & calendar</h2><p className="helper">Add dates in the order readers should see them.</p>
                 {issue.agenda.map((item, index) => <div className="item-card agenda-card" key={item.id}><div className="card-tools"><MoveButtons onUp={() => update({ agenda: reorder(issue.agenda, index, -1) })} onDown={() => update({ agenda: reorder(issue.agenda, index, 1) })} /><button className="delete" onClick={() => update({ agenda: issue.agenda.filter((x) => x.id !== item.id) })}>×</button></div>
-                  <label>Event<input value={item.title} onChange={(e) => update({ agenda: issue.agenda.map((x) => x.id === item.id ? { ...x, title: e.target.value } : x) })} /></label><div className="field-row"><label>Date<input value={item.date} onChange={(e) => update({ agenda: issue.agenda.map((x) => x.id === item.id ? { ...x, date: e.target.value } : x) })} /></label><label>Time<input value={item.time} onChange={(e) => update({ agenda: issue.agenda.map((x) => x.id === item.id ? { ...x, time: e.target.value } : x) })} /></label></div></div>)}
+                  <label>Event<input value={item.title} onChange={(e) => update({ agenda: issue.agenda.map((x) => x.id === item.id ? { ...x, title: e.target.value } : x) })} /></label><div className="field-row"><label>Date<input type="date" value={/^\d{4}-\d{2}-\d{2}$/.test(item.date) ? item.date : ""} onChange={(e) => update({ agenda: issue.agenda.map((x) => x.id === item.id ? { ...x, date: e.target.value } : x) })} />{item.date && !/^\d{4}-\d{2}-\d{2}$/.test(item.date) && <small className="legacy-value">Current: {item.date}</small>}</label><label>Time<input type="time" value={/^\d{2}:\d{2}$/.test(item.time) ? item.time : ""} onChange={(e) => update({ agenda: issue.agenda.map((x) => x.id === item.id ? { ...x, time: e.target.value } : x) })} />{item.time && !/^\d{2}:\d{2}$/.test(item.time) && <small className="legacy-value">Current: {item.time}</small>}</label></div></div>)}
                 <button className="add-button" onClick={() => update({ agenda: [...issue.agenda, { id: uid(), date: "", time: "", title: "New event" }] })}>+ Add event</button>
               </div>}
               {tab === "articles" && <div className="form-section"><h2>Articles</h2><p className="helper">Build stories and arrange their reading order.</p>
@@ -251,7 +260,7 @@ function NewsletterPreview({ issue, previewRef }: { issue: Newsletter; previewRe
       <header className="masthead">{issue.logo ? <img src={issue.logo} alt="" /> : <div className="logo-placeholder">HP</div>}<div><p>{new Date(issue.issueDate + "T12:00:00").toLocaleDateString(undefined, { month: "long", year: "numeric" })}</p><h1>{issue.title}</h1><span>News, notices & stories from the community</span></div></header>
       <div className="rule" />
       <div className="newsletter-columns">
-        <section className="agenda-preview"><h2>Dates to remember</h2>{issue.agenda.map((item) => <div className="event-line" key={item.id}><b>{item.date}</b><span>{item.title}</span><em>{item.time}</em></div>)}</section>
+        <section className="agenda-preview"><h2>Dates to remember</h2>{issue.agenda.map((item) => <div className="event-line" key={item.id}><b>{formatAgendaDate(item.date)}</b><span>{item.title}</span><em>{formatAgendaTime(item.time)}</em></div>)}</section>
         {issue.articles.map((article) => <section className="story" key={article.id}><h2>{article.title}</h2>{(article.authorName || article.authorRole) && <p className="article-byline">{article.authorName}{article.authorName && article.authorRole ? <span> · </span> : null}{article.authorRole}</p>}<div dangerouslySetInnerHTML={{ __html: article.body }} /></section>)}
         {issue.classifieds.length > 0 && <section className="classified-preview"><h2>Classifieds & For Sale</h2>{issue.classifieds.map((item) => <div key={item.id}><h3>{item.title} <b>{item.price}</b></h3><p>{item.body}</p><small>{item.contact}</small></div>)}</section>}
       </div>
