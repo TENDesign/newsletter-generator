@@ -3,7 +3,7 @@
 import { ChangeEvent, useEffect, useRef, useState } from "react";
 
 type AgendaItem = { id: string; date: string; time: string; title: string };
-type Article = { id: string; title: string; body: string };
+type Article = { id: string; title: string; authorName: string; authorRole: string; body: string };
 type Classified = { id: string; title: string; price: string; contact: string; body: string };
 type PdfPage = { id: string; name: string; data: string };
 type Newsletter = {
@@ -45,11 +45,15 @@ const freshIssue = (): Newsletter => ({
     {
       id: uid(),
       title: "From the Helm",
+      authorName: "Tim Willford",
+      authorRole: "Commodore",
       body: "<p><strong>Welcome to a new season on the water.</strong> Use this space for club news, member updates, and stories from the fleet.</p><p>Add as many articles as you need, then drag them into the perfect reading order.</p>",
     },
     {
       id: uid(),
       title: "First Mate’s Log",
+      authorName: "",
+      authorRole: "First Mate",
       body: "<p>The docks are busy, the boats are returning, and summer is officially underway. We look forward to seeing everyone at the club.</p>",
     },
   ],
@@ -103,7 +107,15 @@ export default function Home() {
   useEffect(() => {
     const saved = localStorage.getItem(STORE);
     const parsed = saved
-      ? JSON.parse(saved).map((item: Newsletter) => ({ ...item, fontFamily: item.fontFamily || FONT_OPTIONS[0].stack }))
+      ? JSON.parse(saved).map((item: Newsletter) => ({
+          ...item,
+          fontFamily: item.fontFamily || FONT_OPTIONS[0].stack,
+          articles: item.articles.map((article) => ({
+            ...article,
+            authorName: article.authorName || "",
+            authorRole: article.authorRole || "",
+          })),
+        }))
       : [freshIssue()];
     setIssues(parsed);
     setActiveId(parsed[0]?.id || "");
@@ -209,8 +221,8 @@ export default function Home() {
                 <button className="add-button" onClick={() => update({ agenda: [...issue.agenda, { id: uid(), date: "", time: "", title: "New event" }] })}>+ Add event</button>
               </div>}
               {tab === "articles" && <div className="form-section"><h2>Articles</h2><p className="helper">Build stories and arrange their reading order.</p>
-                {issue.articles.map((item, index) => <div className="item-card" key={item.id}><div className="card-tools"><MoveButtons onUp={() => update({ articles: reorder(issue.articles, index, -1) })} onDown={() => update({ articles: reorder(issue.articles, index, 1) })} /><button className="delete" onClick={() => update({ articles: issue.articles.filter((x) => x.id !== item.id) })}>×</button></div><label>Article title<input value={item.title} onChange={(e) => update({ articles: issue.articles.map((x) => x.id === item.id ? { ...x, title: e.target.value } : x) })} /></label><label>Story</label><RichEditor value={item.body} onChange={(body) => update({ articles: issue.articles.map((x) => x.id === item.id ? { ...x, body } : x) })} /></div>)}
-                <button className="add-button" onClick={() => update({ articles: [...issue.articles, { id: uid(), title: "New article", body: "<p>Start writing here…</p>" }] })}>+ Add article</button>
+                {issue.articles.map((item, index) => <div className="item-card" key={item.id}><div className="card-tools"><MoveButtons onUp={() => update({ articles: reorder(issue.articles, index, -1) })} onDown={() => update({ articles: reorder(issue.articles, index, 1) })} /><button className="delete" onClick={() => update({ articles: issue.articles.filter((x) => x.id !== item.id) })}>×</button></div><label>Article title<input value={item.title} onChange={(e) => update({ articles: issue.articles.map((x) => x.id === item.id ? { ...x, title: e.target.value } : x) })} /></label><div className="field-row"><label>Author name<input placeholder="Tim Willford" value={item.authorName} onChange={(e) => update({ articles: issue.articles.map((x) => x.id === item.id ? { ...x, authorName: e.target.value } : x) })} /></label><label>Author role<input placeholder="Commodore" value={item.authorRole} onChange={(e) => update({ articles: issue.articles.map((x) => x.id === item.id ? { ...x, authorRole: e.target.value } : x) })} /></label></div><label>Story</label><RichEditor value={item.body} onChange={(body) => update({ articles: issue.articles.map((x) => x.id === item.id ? { ...x, body } : x) })} /></div>)}
+                <button className="add-button" onClick={() => update({ articles: [...issue.articles, { id: uid(), title: "New article", authorName: "", authorRole: "", body: "<p>Start writing here…</p>" }] })}>+ Add article</button>
               </div>}
               {tab === "classifieds" && <div className="form-section"><h2>Classifieds & for sale</h2><p className="helper">Collect member listings in one easy-to-scan section.</p>
                 {issue.classifieds.map((item, index) => <div className="item-card" key={item.id}><div className="card-tools"><MoveButtons onUp={() => update({ classifieds: reorder(issue.classifieds, index, -1) })} onDown={() => update({ classifieds: reorder(issue.classifieds, index, 1) })} /><button className="delete" onClick={() => update({ classifieds: issue.classifieds.filter((x) => x.id !== item.id) })}>×</button></div><label>Listing title<input value={item.title} onChange={(e) => update({ classifieds: issue.classifieds.map((x) => x.id === item.id ? { ...x, title: e.target.value } : x) })} /></label><div className="field-row"><label>Price<input value={item.price} onChange={(e) => update({ classifieds: issue.classifieds.map((x) => x.id === item.id ? { ...x, price: e.target.value } : x) })} /></label><label>Contact<input value={item.contact} onChange={(e) => update({ classifieds: issue.classifieds.map((x) => x.id === item.id ? { ...x, contact: e.target.value } : x) })} /></label></div><label>Description<textarea value={item.body} onChange={(e) => update({ classifieds: issue.classifieds.map((x) => x.id === item.id ? { ...x, body: e.target.value } : x) })} /></label></div>)}
@@ -240,7 +252,7 @@ function NewsletterPreview({ issue, previewRef }: { issue: Newsletter; previewRe
       <div className="rule" />
       <div className="newsletter-columns">
         <section className="agenda-preview"><h2>Dates to remember</h2>{issue.agenda.map((item) => <div className="event-line" key={item.id}><b>{item.date}</b><span>{item.title}</span><em>{item.time}</em></div>)}</section>
-        {issue.articles.map((article) => <section className="story" key={article.id}><h2>{article.title}</h2><div dangerouslySetInnerHTML={{ __html: article.body }} /></section>)}
+        {issue.articles.map((article) => <section className="story" key={article.id}><h2>{article.title}</h2>{(article.authorName || article.authorRole) && <p className="article-byline">{article.authorName}{article.authorName && article.authorRole ? <span> · </span> : null}{article.authorRole}</p>}<div dangerouslySetInnerHTML={{ __html: article.body }} /></section>)}
         {issue.classifieds.length > 0 && <section className="classified-preview"><h2>Classifieds & For Sale</h2>{issue.classifieds.map((item) => <div key={item.id}><h3>{item.title} <b>{item.price}</b></h3><p>{item.body}</p><small>{item.contact}</small></div>)}</section>}
       </div>
       <footer>{issue.title} <span>•</span> {new Date(issue.issueDate + "T12:00:00").toLocaleDateString()}</footer>
