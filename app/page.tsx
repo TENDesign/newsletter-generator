@@ -11,6 +11,7 @@ type Newsletter = {
   title: string;
   issueDate: string;
   logo: string;
+  fontFamily: string;
   published: boolean;
   agenda: AgendaItem[];
   articles: Article[];
@@ -20,11 +21,20 @@ type Newsletter = {
 };
 
 const uid = () => Math.random().toString(36).slice(2, 10);
+const FONT_OPTIONS = [
+  { name: "Lora", stack: "'Lora', Georgia, serif" },
+  { name: "Merriweather", stack: "'Merriweather', Georgia, serif" },
+  { name: "Roboto", stack: "'Roboto', Arial, sans-serif" },
+  { name: "Open Sans", stack: "'Open Sans', Arial, sans-serif" },
+  { name: "Montserrat", stack: "'Montserrat', Arial, sans-serif" },
+  { name: "Playfair Display", stack: "'Playfair Display', Georgia, serif" },
+];
 const freshIssue = (): Newsletter => ({
   id: uid(),
   title: "Cross Bearings",
   issueDate: new Date().toISOString().slice(0, 10),
   logo: "",
+  fontFamily: FONT_OPTIONS[0].stack,
   published: false,
   agenda: [
     { id: uid(), date: "Jul 1", time: "6:00 PM", title: "Wednesday Night Racing" },
@@ -92,7 +102,9 @@ export default function Home() {
 
   useEffect(() => {
     const saved = localStorage.getItem(STORE);
-    const parsed = saved ? JSON.parse(saved) : [freshIssue()];
+    const parsed = saved
+      ? JSON.parse(saved).map((item: Newsletter) => ({ ...item, fontFamily: item.fontFamily || FONT_OPTIONS[0].stack }))
+      : [freshIssue()];
     setIssues(parsed);
     setActiveId(parsed[0]?.id || "");
     setReady(true);
@@ -183,6 +195,12 @@ export default function Home() {
                 <h2>Issue details</h2><p className="helper">Set the identity that appears at the top of every newsletter.</p>
                 <label>Newsletter title<input value={issue.title} onChange={(e) => update({ title: e.target.value })} /></label>
                 <label>Issue date<input type="date" value={issue.issueDate} onChange={(e) => update({ issueDate: e.target.value })} /></label>
+                <label>Newsletter font
+                  <select value={issue.fontFamily} onChange={(e) => update({ fontFamily: e.target.value })}>
+                    {FONT_OPTIONS.map((font) => <option key={font.name} value={font.stack}>{font.name}</option>)}
+                  </select>
+                  <small className="field-note">Choose from a simple selection of popular Google Fonts.</small>
+                </label>
                 <label>Logo</label><label className="upload-box">{issue.logo ? <img src={issue.logo} alt="Newsletter logo" /> : <span className="upload-icon">↥</span>}<span><b>{issue.logo ? "Replace logo" : "Upload your logo"}</b><small>PNG or JPG works best</small></span><input type="file" accept="image/*" onChange={loadImage} /></label>
               </div>}
               {tab === "agenda" && <div className="form-section"><h2>Agenda & calendar</h2><p className="helper">Add dates in the order readers should see them.</p>
@@ -216,7 +234,7 @@ export default function Home() {
 }
 
 function NewsletterPreview({ issue, previewRef }: { issue: Newsletter; previewRef: React.RefObject<HTMLDivElement | null> }) {
-  return <div className="newsletter-pages" ref={previewRef}>
+  return <div className="newsletter-pages" ref={previewRef} style={{ fontFamily: issue.fontFamily || FONT_OPTIONS[0].stack }}>
     <article className="newsletter-page">
       <header className="masthead">{issue.logo ? <img src={issue.logo} alt="" /> : <div className="logo-placeholder">HP</div>}<div><p>{new Date(issue.issueDate + "T12:00:00").toLocaleDateString(undefined, { month: "long", year: "numeric" })}</p><h1>{issue.title}</h1><span>News, notices & stories from the community</span></div></header>
       <div className="rule" />
