@@ -21,9 +21,24 @@ type Newsletter = {
 };
 
 const uid = () => Math.random().toString(36).slice(2, 10);
+const MONTHS = [
+  "January", "February", "March", "April", "May", "June",
+  "July", "August", "September", "October", "November", "December",
+];
+const getAgendaDateParts = (value: string) => {
+  const match = value.match(/^(?:\d{4}-)?(\d{2})-(\d{2})$/);
+  return match ? { month: match[1], day: match[2] } : { month: "", day: "" };
+};
+const daysInAgendaMonth = (month: string) => {
+  const monthNumber = Number(month);
+  if (monthNumber === 2) return 29;
+  if ([4, 6, 9, 11].includes(monthNumber)) return 30;
+  return 31;
+};
 const formatAgendaDate = (value: string) => {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return value;
-  return new Date(`${value}T12:00:00`).toLocaleDateString(undefined, { month: "short", day: "numeric" });
+  const { month, day } = getAgendaDateParts(value);
+  if (!month || !day) return value;
+  return `${MONTHS[Number(month) - 1].slice(0, 3)} ${Number(day)}`;
 };
 const formatAgendaTime = (value: string) => {
   if (!/^\d{2}:\d{2}$/.test(value)) return value;
@@ -46,9 +61,9 @@ const freshIssue = (): Newsletter => ({
   fontFamily: FONT_OPTIONS[0].stack,
   published: false,
   agenda: [
-    { id: uid(), date: "2026-07-24", time: "18:00", title: "Wednesday Night Racing" },
-    { id: uid(), date: "2026-07-25", time: "18:30", title: "Spring / Summer Series" },
-    { id: uid(), date: "2026-07-26", time: "08:00", title: "Sunday Centerboard Series" },
+    { id: uid(), date: "07-24", time: "18:00", title: "Wednesday Night Racing" },
+    { id: uid(), date: "07-25", time: "18:30", title: "Spring / Summer Series" },
+    { id: uid(), date: "07-26", time: "08:00", title: "Sunday Centerboard Series" },
   ],
   articles: [
     {
@@ -136,6 +151,11 @@ export default function Home() {
 
   const issue = issues.find((i) => i.id === activeId) || issues[0];
   const update = (patch: Partial<Newsletter>) => setIssues((all) => all.map((i) => i.id === issue.id ? { ...i, ...patch, updatedAt: new Date().toISOString() } : i));
+  const updateAgendaDate = (item: AgendaItem, month: string, day: string) => {
+    const clampedDay = day && month ? String(Math.min(Number(day), daysInAgendaMonth(month))).padStart(2, "0") : day;
+    const date = month && clampedDay ? `${month}-${clampedDay}` : "";
+    update({ agenda: issue.agenda.map((entry) => entry.id === item.id ? { ...entry, date } : entry) });
+  };
   const reorder = <T,>(items: T[], index: number, delta: number) => {
     const target = index + delta;
     if (target < 0 || target >= items.length) return items;
@@ -226,7 +246,7 @@ export default function Home() {
               </div>}
               {tab === "agenda" && <div className="form-section"><h2>Agenda & calendar</h2><p className="helper">Add dates in the order readers should see them.</p>
                 {issue.agenda.map((item, index) => <div className="item-card agenda-card" key={item.id}><div className="card-tools"><MoveButtons onUp={() => update({ agenda: reorder(issue.agenda, index, -1) })} onDown={() => update({ agenda: reorder(issue.agenda, index, 1) })} /><button className="delete" onClick={() => update({ agenda: issue.agenda.filter((x) => x.id !== item.id) })}>×</button></div>
-                  <label>Event<input value={item.title} onChange={(e) => update({ agenda: issue.agenda.map((x) => x.id === item.id ? { ...x, title: e.target.value } : x) })} /></label><div className="field-row"><label>Date<input type="date" value={/^\d{4}-\d{2}-\d{2}$/.test(item.date) ? item.date : ""} onChange={(e) => update({ agenda: issue.agenda.map((x) => x.id === item.id ? { ...x, date: e.target.value } : x) })} />{item.date && !/^\d{4}-\d{2}-\d{2}$/.test(item.date) && <small className="legacy-value">Current: {item.date}</small>}</label><label>Time<input type="time" value={/^\d{2}:\d{2}$/.test(item.time) ? item.time : ""} onChange={(e) => update({ agenda: issue.agenda.map((x) => x.id === item.id ? { ...x, time: e.target.value } : x) })} />{item.time && !/^\d{2}:\d{2}$/.test(item.time) && <small className="legacy-value">Current: {item.time}</small>}</label></div></div>)}
+                  <label>Event<input value={item.title} onChange={(e) => update({ agenda: issue.agenda.map((x) => x.id === item.id ? { ...x, title: e.target.value } : x) })} /></label><div className="field-row"><fieldset className="date-pickers"><legend>Date</legend><div><select aria-label="Event month" value={getAgendaDateParts(item.date).month} onChange={(e) => updateAgendaDate(item, e.target.value, getAgendaDateParts(item.date).day || "01")}><option value="">Month</option>{MONTHS.map((month, monthIndex) => <option key={month} value={String(monthIndex + 1).padStart(2, "0")}>{month}</option>)}</select><select aria-label="Event day" value={getAgendaDateParts(item.date).day} onChange={(e) => updateAgendaDate(item, getAgendaDateParts(item.date).month || "01", e.target.value)}><option value="">Day</option>{Array.from({ length: daysInAgendaMonth(getAgendaDateParts(item.date).month) }, (_, dayIndex) => <option key={dayIndex + 1} value={String(dayIndex + 1).padStart(2, "0")}>{dayIndex + 1}</option>)}</select></div>{item.date && !getAgendaDateParts(item.date).month && <small className="legacy-value">Current: {item.date}</small>}</fieldset><label>Time<input type="time" value={/^\d{2}:\d{2}$/.test(item.time) ? item.time : ""} onChange={(e) => update({ agenda: issue.agenda.map((x) => x.id === item.id ? { ...x, time: e.target.value } : x) })} />{item.time && !/^\d{2}:\d{2}$/.test(item.time) && <small className="legacy-value">Current: {item.time}</small>}</label></div></div>)}
                 <button className="add-button" onClick={() => update({ agenda: [...issue.agenda, { id: uid(), date: "", time: "", title: "New event" }] })}>+ Add event</button>
               </div>}
               {tab === "articles" && <div className="form-section"><h2>Articles</h2><p className="helper">Build stories and arrange their reading order.</p>
